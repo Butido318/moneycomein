@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Management | 投資資產管理</title>
+    <title>Wealth Management | MONEYCOMEIN</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -23,7 +23,6 @@
         .form-group { display: flex; flex-direction: column; }
         label { font-size: 0.85rem; margin-bottom: 5px; color: #888; }
         input, select { padding: 10px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
-        input:focus { border-color: var(--matte-gold); }
         button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-top: 15px; width: 100%; }
         button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(197, 160, 89, 0.4); }
     </style>
@@ -40,7 +39,7 @@
         <h2>帳戶存入 (Deposit)</h2>
         <div class="grid">
             <div class="form-group"><label>日期</label><input type="date" id="accDate"></div>
-            <div class="form-group"><label>存入金額</label><input type="number" id="accAmount"></div>
+            <div class="form-group"><label>金額</label><input type="number" id="accAmount"></div>
             <div class="form-group"><label>備註</label><input type="text" id="accNote"></div>
         </div>
         <button onclick="submitAccount()">提交存入紀錄</button>
@@ -58,7 +57,7 @@
                 </select>
             </div>
             <div class="form-group"><label>代碼</label><input type="text" id="tradeCode"></div>
-            <div class="form-group"><label>名稱</label><input type="text" id="tradeName"></div>
+            <div class="form-group"><label>名稱 (選填)</label><input type="text" id="tradeName" placeholder="新股票請填中文名"></div>
             <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價 (每股)</label><input type="number" id="tradePrice"></div>
             <div class="form-group"><label>手續費</label><input type="number" id="tradeFee" value="0"></div>
@@ -68,9 +67,9 @@
 </div>
 
 <script>
-    // ⚠️ 請在此處替換成您的 GAS 網址
     const GAS_URL = '您的_APPS_SCRIPT_網址';
 
+    // 設定預設日期為今天
     document.querySelectorAll('input[type="date"]').forEach(el => el.value = new Date().toISOString().split('T')[0]);
 
     function submitAccount() {
@@ -91,7 +90,7 @@
         const fee = Number(document.getElementById('tradeFee').value);
         const type = document.getElementById('tradeType').value;
 
-        // 重要：在此處計算總額，避免文字串接錯誤
+        // 計算總額，防止字串串接
         let total = (type === "進") ? (qty * price) + fee : (qty * price) - fee;
 
         const payload = {
@@ -116,7 +115,16 @@
             mode: 'no-cors',
             body: JSON.stringify(payload)
         })
-        .then(() => alert('資料已送出，請至試算表查看！'))
+        .then(() => {
+            alert('資料已成功送出！');
+            // 成功後清空部分輸入框
+            if(payload.action === "addTransaction") {
+                document.getElementById('tradeCode').value = '';
+                document.getElementById('tradeName').value = '';
+                document.getElementById('tradeQty').value = '';
+                document.getElementById('tradePrice').value = '';
+            }
+        })
         .catch(err => alert('發生錯誤：' + err));
     }
 </script>
