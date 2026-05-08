@@ -58,11 +58,10 @@
                 </select>
             </div>
             <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="例如：2330"></div>
-            <div class="form-group">
-                <label>名稱</label>
-                <input type="text" id="tradeName" list="stockOptions" placeholder="手寫或選擇名稱">
-                <datalist id="stockOptions"></datalist>
-            </div>
+            <div class="form-group"> <label>名稱</label>
+            <input type="text" id="tradeName" list="stockOptions" placeholder="輸入名稱或關鍵字" oninput="autoMatchCode(this.value)">
+          <datalist id="stockOptions"></datalist>
+        </div>
             <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價 (每股)</label><input type="number" id="tradePrice"></div>
             <div class="form-group"><label>手續費</label><input type="number" id="tradeFee" value="0"></div>
@@ -83,7 +82,13 @@
         document.getElementById('tradeDate').value = today;
         fetchProductList();
     };
-
+// 讓名稱也能反向帶入代碼 (選配)
+    function autoMatchCode(name) {
+        const found = localProductList.find(i => i.name === name);
+        if (found) {
+            document.getElementById('tradeCode').value = found.code;
+        }
+    }
     // 從 GAS 抓取最新的代碼與名稱清單
     function fetchProductList() {
         fetch(GAS_URL + "?action=getProductList")
@@ -204,6 +209,26 @@
             document.getElementById('tradeFee').value = '0';
             document.getElementById('tradeType').value = '進';
             document.getElementById('tradeDate').value = today;
+        }
+    }
+
+    // 核心修改：重置表單時保留當天日期
+    function resetForm(action) {
+        // 取得當前時區的 yyyy-mm-dd
+        const now = new Date();
+        const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+        if (action === "addAccountLog") {
+            document.getElementById('accAmount').value = '';
+            document.getElementById('accNote').value = '';
+            document.getElementById('accDate').value = today; // 保留當日
+        } else {
+            document.getElementById('tradeCode').value = '';
+            document.getElementById('tradeName').value = '';
+            document.getElementById('tradeQty').value = '';
+            document.getElementById('tradePrice').value = '';
+            document.getElementById('tradeFee').value = '0';
+            document.getElementById('tradeDate').value = today; // 保留當日
         }
     }
 </script>
