@@ -20,7 +20,7 @@
         .val { font-size: 1.2rem; font-weight: bold; }
         .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
         input, select { padding: 10px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
-        button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
+        button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button:disabled { background: #999; cursor: not-allowed; opacity: 0.7; }
     </style>
 </head>
@@ -67,7 +67,7 @@
             <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="2330"></div>
             <div class="form-group">
                 <label>名稱</label>
-                <input type="text" id="tradeName" list="stockOptions" placeholder="搜尋名稱...">
+                <input type="text" id="tradeName" list="stockOptions" placeholder="搜尋或新增名稱...">
                 <datalist id="stockOptions"></datalist>
             </div>
             <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
@@ -79,7 +79,7 @@
 </div>
 
 <script>
-    // 【請更換為您的 GAS 部署網址】
+    // 【請更換為您的最新 GAS 部署網址】
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec';
     
     let localProductList = [];
@@ -93,7 +93,6 @@
         fetchLastProfit();
     };
 
-    // 取得最新資產概況
     function fetchLastProfit() {
         fetch(GAS_URL + "?action=getLastProfit").then(res => res.json()).then(data => {
             if (!data.date) return;
@@ -111,7 +110,6 @@
         });
     }
 
-    // 取得商品清單並建立模糊搜尋
     function fetchProductList() {
         fetch(GAS_URL + "?action=getProductList").then(res => res.json()).then(data => {
             localProductList = data;
@@ -126,63 +124,50 @@
         });
     }
 
-    // 【修正：雙向連動邏輯】
-    // 1. 代碼 -> 名稱
+    // 雙向連動核心邏輯
     document.getElementById('tradeCode').addEventListener('input', function() {
         const code = this.value.trim();
-        const found = localProductList.find(i => i.code.toString() === code);
-        if (found) {
-            document.getElementById('tradeName').value = found.name;
-        }
+        const found = localProductList.find(i => i.code === code);
+        if (found) document.getElementById('tradeName').value = found.name;
     });
 
-    // 2. 名稱 -> 代碼
     document.getElementById('tradeName').addEventListener('input', function() {
         const name = this.value.trim();
         const found = localProductList.find(i => i.name === name);
-        if (found) {
-            document.getElementById('tradeCode').value = found.code;
-        }
+        if (found) document.getElementById('tradeCode').value = found.code;
     });
 
     function submitAccount() {
         const amount = document.getElementById('accAmount').value;
         if (!amount) return alert('請輸入金額');
-        const payload = {
+        sendToGas({
             action: "addAccountLog",
             data: {
                 date: document.getElementById('accDate').value,
                 amount: amount,
                 note: document.getElementById('accNote').value
             }
-        };
-        sendToGas(payload, 'btnAccount');
+        }, 'btnAccount');
     }
 
     function submitTrade() {
-        const code = document.getElementById('tradeCode').value;
-        const name = document.getElementById('tradeName').value;
+        const code = document.getElementById('tradeCode').value.trim();
+        const name = document.getElementById('tradeName').value.trim();
         const qty = Number(document.getElementById('tradeQty').value);
         const price = Number(document.getElementById('tradePrice').value);
         const fee = Number(document.getElementById('tradeFee').value);
         const type = document.getElementById('tradeType').value;
 
-        if (!code || !qty || !price) return alert('請填寫完整代碼、數量與單價');
+        if (!code || !name || !qty || !price) return alert('請填寫完整資訊');
 
-        const payload = {
+        sendToGas({
             action: "addTransaction",
             data: {
                 date: document.getElementById('tradeDate').value,
-                type: type,
-                code: code,
-                name: name,
-                qty: qty,
-                price: price,
-                fee: fee,
+                type: type, code: code, name: name, qty: qty, price: price, fee: fee,
                 total: (type === "進") ? (qty * price) + fee : (qty * price) - fee
             }
-        };
-        sendToGas(payload, 'btnTrade');
+        }, 'btnTrade');
     }
 
     function sendToGas(payload, btnId) {
@@ -190,7 +175,7 @@
         isSubmitting = true;
         const btn = document.getElementById(btnId);
         const originalText = btn.innerText;
-        btn.innerText = '處理中，請稍候...';
+        btn.innerText = '處理中...';
         btn.disabled = true;
 
         fetch(GAS_URL, {
@@ -201,7 +186,8 @@
         .then(() => {
             alert('送出成功！');
             resetForm(payload.action);
-            fetchLastProfit(); // 同步更新上方儀表板
+            fetchLastProfit();
+            fetchProductList(); // 送出交易後，重新抓取清單以包含新自動新增的商品
         })
         .catch(err => alert('系統錯誤：' + err))
         .finally(() => {
@@ -222,7 +208,7 @@
             document.getElementById('tradeName').value = '';
             document.getElementById('tradeQty').value = '';
             document.getElementById('tradePrice').value = '';
-            document.getElementById('tradeFee').value = '0'; // 回歸預設 0
+            document.getElementById('tradeFee').value = '0';
             document.getElementById('tradeDate').value = today;
         }
     }
