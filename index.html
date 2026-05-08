@@ -179,7 +179,15 @@
             fetchProductList(); // 重新抓取清單，確保新加入的股票出現在下拉選單
         })
         .catch(err => alert('發生錯誤：' + err));
-    }
+    })
+    .finally(() => {
+        // 無論成功或失敗，都解除鎖定
+        isSubmitting = false;
+        submitBtn.innerText = originalText;
+        submitBtn.style.opacity = '1';
+        submitBtn.disabled = false;
+    });
+}
 
     // 自動回到原設定 (重置表單)
     function resetForm(action) {
