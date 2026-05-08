@@ -151,7 +151,23 @@
     }
 
     // 發送資料至 GAS
-    function sendToGas(payload) {
+  let isSubmitting = false;
+
+  function sendToGas(payload) {
+    // 如果正在送出中，直接攔截
+    if (isSubmitting) {
+        alert('資料更新中，請勿重複寫入');
+        return;
+    }
+
+    // 開始送出，鎖定狀態並改變按鈕樣式
+    isSubmitting = true;
+    const submitBtn = document.querySelector('button'); // 建議給按鈕一個 ID 會更精確
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = '處理中...';
+    submitBtn.style.opacity = '0.5';
+    submitBtn.disabled = true;
+    
         fetch(GAS_URL, {
             method: 'POST',
             mode: 'no-cors', // 配合 GAS 的跨網域規範
