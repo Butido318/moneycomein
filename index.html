@@ -250,21 +250,36 @@
         sendToGas(data);
     }
 
-    function submitTrade() {
-        const data = {
-            action: "addTransaction",
-            data: {
-                date: document.getElementById('tradeDate').value,
-                type: document.getElementById('tradeType').value,
-                code: document.getElementById('tradeCode').value,
-                name: document.getElementById('tradeName').value,
-                qty: document.getElementById('tradeQty').value,
-                price: document.getElementById('tradePrice').value,
-                fee: document.getElementById('tradeFee').value
-            }
-        };
-        sendToGas(data);
+function submitTrade() {
+    // 取得輸入值並強制轉為數字類型
+    const qty = Number(document.getElementById('tradeQty').value);
+    const price = Number(document.getElementById('tradePrice').value);
+    const fee = Number(document.getElementById('tradeFee').value);
+    const type = document.getElementById('tradeType').value;
+
+    // 這裡就是計算總額的地方
+    let total = 0;
+    if (type === "進") {
+        total = (qty * price) + fee; // 進貨：成本增加
+    } else {
+        total = (qty * price) - fee; // 出倉：實拿金額減少
     }
+
+    const data = {
+        action: "addTransaction",
+        data: {
+            date: document.getElementById('tradeDate').value,
+            type: type,
+            code: document.getElementById('tradeCode').value,
+            name: document.getElementById('tradeName').value,
+            qty: qty,
+            price: price,
+            fee: fee,
+            total: total // 傳送計算好的總額
+        }
+    };
+    sendToGas(data);
+}
 
     function sendToGas(payload) {
     // 顯示按鈕正在處理中，避免重複點擊
