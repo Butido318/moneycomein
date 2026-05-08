@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wealth Management | 股市進退場管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pearl-white: #FDFDFD;
+            --soft-gray: #F4F4F4;
+            --matte-gold: #C5A059;
+            --champagne: #E2C275;
+            --text-dark: #4A4A4A;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--soft-gray);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            border-bottom: 2px solid var(--champagne);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--matte-gold);
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        /* 卡片樣式 */
+        .card {
+            background: var(--pearl-white);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            padding: 25px;
+            margin-bottom: 25px;
+            border-top: 4px solid var(--matte-gold);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: var(--matte-gold);
+            margin-top: 0;
+        }
+
+        /* 表單佈局 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #888;
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #DDD;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--matte-gold);
+        }
+
+        /* 按鈕樣式 */
+        button {
+            background: linear-gradient(135deg, var(--champagne), var(--matte-gold));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(197, 160, 89, 0.4);
+        }
+
+        /* 表格樣式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th {
+            background-color: var(--soft-gray);
+            color: var(--matte-gold);
+            padding: 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #EEE;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .btn-update {
+            background: none;
+            border: 1px solid var(--matte-gold);
+            color: var(--matte-gold);
+            padding: 5px 10px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>STOCK MANAGEMENT</h1>
+        <p style="color: #999; font-weight: 300;">資產進退場管理系統</p>
+    </header>
+
+    <!-- 1. 帳戶存入 -->
+    <div class="card">
+        <h2>帳戶存入 (Deposit)</h2>
+        <div class="grid">
+            <div class="form-group">
+                <label>資料日期</label>
+                <input type="date" id="accDate">
+            </div>
+            <div class="form-group">
+                <label>存入金額</label>
+                <input type="number" id="accAmount" placeholder="輸入金額">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>備註 (選填)</label>
+                <input type="text" id="accNote" placeholder="例如：5月薪資轉入">
+            </div>
+        </div>
+        <button onclick="submitAccount()">提交存入紀錄</button>
+    </div>
+
+    <!-- 2. 交易明細 (進/出) -->
+    <div class="card">
+        <h2>交易明細 (Transaction)</h2>
+        <div class="grid">
+            <div class="form-group">
+                <label>日期</label>
+                <input type="date" id="tradeDate">
+            </div>
+            <div class="form-group">
+                <label>交易類型</label>
+                <select id="tradeType">
+                    <option value="進">進貨 (Buy)</option>
+                    <option value="出">出倉 (Sell)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>代碼</label>
+                <input type="text" id="tradeCode" placeholder="2330" onchange="autoFillName()">
+            </div>
+            <div class="form-group">
+                <label>股票名稱</label>
+                <input type="text" id="tradeName" placeholder="台積電">
+            </div>
+            <div class="form-group">
+                <label>數量</label>
+                <input type="number" id="tradeQty">
+            </div>
+            <div class="form-group">
+                <label>單價</label>
+                <input type="number" id="tradePrice">
+            </div>
+            <div class="form-group">
+                <label>手續費</label>
+                <input type="number" id="tradeFee" value="0">
+            </div>
+        </div>
+        <button onclick="submitTrade()">儲存交易紀錄</button>
+    </div>
+
+    <!-- 3. 庫存管理 -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>現有庫存表 (Inventory)</h2>
+            <button class="btn-update" onclick="fetchInventory()">刷新清單</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>代碼</th>
+                    <th>名稱</th>
+                    <th>數量</th>
+                    <th>市場現價</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryTable">
+                <!-- 資料將由 JS 自動帶入 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 預設日期為當天
+    document.querySelectorAll('input[type="date"]').forEach(el => {
+        el.value = new Date().toISOString().split('T')[0];
+    });
+
+    // 這裡替換成您部署 GAS 後得到的 Web App URL
+    const GAS_URL = '您的_GOOGLE_APPS_SCRIPT_網址';
+
+    function submitAccount() {
+        const data = {
+            action: "addAccountLog",
+            data: {
+                date: document.getElementById('accDate').value,
+                amount: document.getElementById('accAmount').value,
+                note: document.getElementById('accNote').value
+            }
+        };
+        sendToGas(data);
+    }
+
+    function submitTrade() {
+        const data = {
+            action: "addTransaction",
+            data: {
+                date: document.getElementById('tradeDate').value,
+                type: document.getElementById('tradeType').value,
+                code: document.getElementById('tradeCode').value,
+                name: document.getElementById('tradeName').value,
+                qty: document.getElementById('tradeQty').value,
+                price: document.getElementById('tradePrice').value,
+                fee: document.getElementById('tradeFee').value
+            }
+        };
+        sendToGas(data);
+    }
+
+    function sendToGas(payload) {
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(res => alert('資料處理中，請至 Excel 確認'))
+        .catch(err => console.error(err));
+    }
+
+    // 模擬自動帶入名稱邏輯 (未來可擴充)
+    function autoFillName() {
+        const code = document.getElementById('tradeCode').value;
+        if(code === '2330') document.getElementById('tradeName').value = '台積電';
+        if(code === '2308') document.getElementById('tradeName').value = '台達電';
+    }
+</script>
+
+</body>
+</html>
