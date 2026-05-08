@@ -58,10 +58,11 @@
                 </select>
             </div>
             <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="例如：2330"></div>
-            <div class="form-group"> <label>名稱</label>
-            <input type="text" id="tradeName" list="stockOptions" placeholder="輸入名稱或關鍵字" oninput="autoMatchCode(this.value)">
-          <datalist id="stockOptions"></datalist>
-        </div>
+            <div class="form-group">
+    <label>名稱</label>
+    <input type="text" id="tradeName" list="stockOptions" placeholder="輸入關鍵字搜尋">
+    <datalist id="stockOptions"></datalist>
+</div>
             <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價 (每股)</label><input type="number" id="tradePrice"></div>
             <div class="form-group"><label>手續費</label><input type="number" id="tradeFee" value="0"></div>
@@ -115,7 +116,16 @@ document.getElementById('tradeCode').addEventListener('input', function() {
         document.getElementById('tradeName').value = found.name;
     }
 });
-
+// 3-2. 新增：監聽「名稱」輸入：自動帶出「代碼」 (當名稱完全匹配時)
+document.getElementById('tradeName').addEventListener('input', function() {
+    const name = this.value.trim();
+    // 在清單中尋找完全符合的名稱
+    const found = localProductList.find(i => i.name === name);
+    if (found) {
+        document.getElementById('tradeCode').value = found.code;
+    }
+});
+    
 // 4. 修正後的重置函式
 function resetForm(action) {
     const today = new Date().toISOString().split('T')[0];
