@@ -19,9 +19,9 @@
         .dash-label { color: #AAA; }
         .val { font-size: 1.2rem; font-weight: bold; }
         .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
-        input, select { padding: 10px; border: 1px solid #DDD; border-radius: 6px; }
-        button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
-        button:disabled { background: #999; }
+        input, select { padding: 10px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
+        button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
+        button:disabled { background: #999; cursor: not-allowed; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -50,102 +50,181 @@
         <div class="grid">
             <div class="form-group"><label>日期</label><input type="date" id="accDate"></div>
             <div class="form-group"><label>金額</label><input type="number" id="accAmount"></div>
-            <div class="full-width"><input type="text" id="accNote" placeholder="備註"></div>
+            <div class="full-width"><label>備註</label><input type="text" id="accNote" placeholder="例如：5月薪資"></div>
         </div>
-        <button id="btnAccount" onclick="submitAccount()">提交存入</button>
+        <button id="btnAccount" onclick="submitAccount()">提交存入紀錄</button>
     </div>
 
     <div class="card">
         <div class="grid">
             <div class="form-group"><label>日期</label><input type="date" id="tradeDate"></div>
-            <div class="form-group"><label>類型</label><select id="tradeType"><option value="進">進貨</option><option value="出">出倉</option></select></div>
-            <div class="form-group"><label>代碼</label><input type="text" id="tradeCode"></div>
-            <div class="form-group"><label>名稱</label><input type="text" id="tradeName" list="stockOptions"><datalist id="stockOptions"></datalist></div>
-            <div class="form-group"><label>數量</label><input type="number" id="tradeQty"></div>
+            <div class="form-group"><label>類型</label>
+                <select id="tradeType">
+                    <option value="進">進貨 (Buy)</option>
+                    <option value="出">出倉 (Sell)</option>
+                </select>
+            </div>
+            <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="2330"></div>
+            <div class="form-group">
+                <label>名稱</label>
+                <input type="text" id="tradeName" list="stockOptions" placeholder="搜尋名稱...">
+                <datalist id="stockOptions"></datalist>
+            </div>
+            <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價</label><input type="number" id="tradePrice"></div>
+            <div class="form-group"><label>手續費</label><input type="number" id="tradeFee" value="0"></div>
         </div>
-        <button id="btnTrade" onclick="submitTrade()">儲存交易</button>
+        <button id="btnTrade" onclick="submitTrade()">儲存交易紀錄</button>
     </div>
 </div>
 
 <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec'; // <--- 請修改這裡
+    // 【請更換為您的 GAS 部署網址】
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec';
+    
     let localProductList = [];
     let isSubmitting = false;
 
     window.onload = function() {
         const today = new Date().toISOString().split('T')[0];
-        document.querySelectorAll('input[type="date"]').forEach(i => i.value = today);
+        document.getElementById('accDate').value = today;
+        document.getElementById('tradeDate').value = today;
         fetchProductList();
         fetchLastProfit();
     };
 
+    // 取得最新資產概況
     function fetchLastProfit() {
-        fetch(GAS_URL + "?action=getLastProfit").then(r => r.json()).then(data => {
+        fetch(GAS_URL + "?action=getLastProfit").then(res => res.json()).then(data => {
             if (!data.date) return;
             document.getElementById('lastUpdateDate').innerText = '最後更新: ' + data.date;
             document.getElementById('dispDeposit').innerText = '$' + Number(data.deposit).toLocaleString();
             document.getElementById('dispMarket').innerText = '$' + Number(data.marketValue).toLocaleString();
             document.getElementById('dispTotal').innerText = '$' + Number(data.totalAssets).toLocaleString();
             document.getElementById('dispCost').innerText = '$' + Number(data.cost).toLocaleString();
-            const pVal = Number(data.profit);
-            document.getElementById('dispProfit').innerText = '$' + pVal.toLocaleString();
+            const profit = Number(data.profit);
+            document.getElementById('dispProfit').innerText = '$' + profit.toLocaleString();
             document.getElementById('dispROI').innerText = data.roi;
-            const color = pVal >= 0 ? '#E2C275' : '#FF6B6B';
+            const color = profit >= 0 ? '#E2C275' : '#FF6B6B';
             document.getElementById('dispProfit').style.color = color;
             document.getElementById('dispROI').style.color = color;
         });
     }
 
+    // 取得商品清單並建立模糊搜尋
     function fetchProductList() {
-        fetch(GAS_URL + "?action=getProductList").then(r => r.json()).then(data => {
+        fetch(GAS_URL + "?action=getProductList").then(res => res.json()).then(data => {
             localProductList = data;
-            const dl = document.getElementById('stockOptions');
-            dl.innerHTML = "";
-            data.forEach(i => { let opt = document.createElement('option'); opt.value = i.name; opt.label = i.code; dl.appendChild(opt); });
+            const datalist = document.getElementById('stockOptions');
+            datalist.innerHTML = "";
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item.name;
+                option.label = item.code;
+                datalist.appendChild(option);
+            });
         });
     }
 
-    document.getElementById('tradeCode').oninput = function() {
-        const f = localProductList.find(i => i.code.toString() === this.value.trim());
-        if (f) document.getElementById('tradeName').value = f.name;
-    };
-    document.getElementById('tradeName').oninput = function() {
-        const f = localProductList.find(i => i.name === this.value.trim());
-        if (f) document.getElementById('tradeCode').value = f.code;
-    };
+    // 【修正：雙向連動邏輯】
+    // 1. 代碼 -> 名稱
+    document.getElementById('tradeCode').addEventListener('input', function() {
+        const code = this.value.trim();
+        const found = localProductList.find(i => i.code.toString() === code);
+        if (found) {
+            document.getElementById('tradeName').value = found.name;
+        }
+    });
+
+    // 2. 名稱 -> 代碼
+    document.getElementById('tradeName').addEventListener('input', function() {
+        const name = this.value.trim();
+        const found = localProductList.find(i => i.name === name);
+        if (found) {
+            document.getElementById('tradeCode').value = found.code;
+        }
+    });
 
     function submitAccount() {
-        const payload = { action: "addAccountLog", data: { date: document.getElementById('accDate').value, amount: document.getElementById('accAmount').value, note: document.getElementById('accNote').value }};
+        const amount = document.getElementById('accAmount').value;
+        if (!amount) return alert('請輸入金額');
+        const payload = {
+            action: "addAccountLog",
+            data: {
+                date: document.getElementById('accDate').value,
+                amount: amount,
+                note: document.getElementById('accNote').value
+            }
+        };
         sendToGas(payload, 'btnAccount');
     }
 
     function submitTrade() {
+        const code = document.getElementById('tradeCode').value;
+        const name = document.getElementById('tradeName').value;
         const qty = Number(document.getElementById('tradeQty').value);
         const price = Number(document.getElementById('tradePrice').value);
+        const fee = Number(document.getElementById('tradeFee').value);
         const type = document.getElementById('tradeType').value;
-        const payload = { action: "addTransaction", data: { 
-            date: document.getElementById('tradeDate').value, type: type, code: document.getElementById('tradeCode').value,
-            name: document.getElementById('tradeName').value, qty: qty, price: price, fee: 0, 
-            total: (type === "進") ? (qty * price) : (qty * price) 
-        }};
+
+        if (!code || !qty || !price) return alert('請填寫完整代碼、數量與單價');
+
+        const payload = {
+            action: "addTransaction",
+            data: {
+                date: document.getElementById('tradeDate').value,
+                type: type,
+                code: code,
+                name: name,
+                qty: qty,
+                price: price,
+                fee: fee,
+                total: (type === "進") ? (qty * price) + fee : (qty * price) - fee
+            }
+        };
         sendToGas(payload, 'btnTrade');
     }
 
-    function sendToGas(p, id) {
+    function sendToGas(payload, btnId) {
         if (isSubmitting) return;
         isSubmitting = true;
-        const b = document.getElementById(id);
-        const t = b.innerText; b.innerText = '處理中...'; b.disabled = true;
-        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(p) }).then(() => {
-            alert('成功！'); resetForm(p.action); fetchLastProfit();
-        }).finally(() => { b.innerText = t; b.disabled = false; isSubmitting = false; });
+        const btn = document.getElementById(btnId);
+        const originalText = btn.innerText;
+        btn.innerText = '處理中，請稍候...';
+        btn.disabled = true;
+
+        fetch(GAS_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            alert('送出成功！');
+            resetForm(payload.action);
+            fetchLastProfit(); // 同步更新上方儀表板
+        })
+        .catch(err => alert('系統錯誤：' + err))
+        .finally(() => {
+            isSubmitting = false;
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
     }
 
-    function resetForm(a) {
-        const d = new Date().toISOString().split('T')[0];
-        if (a === "addAccountLog") { document.getElementById('accAmount').value = ''; document.getElementById('accDate').value = d; }
-        else { ['tradeCode','tradeName','tradeQty','tradePrice'].forEach(id => document.getElementById(id).value = ''); document.getElementById('tradeDate').value = d; }
+    function resetForm(action) {
+        const today = new Date().toISOString().split('T')[0];
+        if (action === "addAccountLog") {
+            document.getElementById('accAmount').value = '';
+            document.getElementById('accNote').value = '';
+            document.getElementById('accDate').value = today;
+        } else {
+            document.getElementById('tradeCode').value = '';
+            document.getElementById('tradeName').value = '';
+            document.getElementById('tradeQty').value = '';
+            document.getElementById('tradePrice').value = '';
+            document.getElementById('tradeFee').value = '0'; // 回歸預設 0
+            document.getElementById('tradeDate').value = today;
+        }
     }
 </script>
 </body>
