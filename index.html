@@ -11,26 +11,17 @@
         .container { max-width: 800px; margin: 0 auto; }
         header { text-align: center; padding: 20px 0; border-bottom: 2px solid var(--champagne); margin-bottom: 20px; }
         h1 { color: var(--matte-gold); letter-spacing: 2px; margin: 0; }
-        
-        /* 儀表板樣式 */
         .card { background: var(--pearl-white); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; border-top: 4px solid var(--matte-gold); }
         .dashboard { background: linear-gradient(135deg, #4A4A4A, #2D2D2D); color: white; border-top: none; }
-        
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .full-width { grid-column: span 2; }
-        
         label { font-size: 0.8rem; color: #888; margin-bottom: 4px; display: block; }
         .dash-label { color: #AAA; }
         .val { font-size: 1.2rem; font-weight: bold; }
-        
         .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
         input, select { padding: 12px; border: 1px solid #DDD; border-radius: 8px; outline: none; font-size: 1rem; }
-        input:focus { border-color: var(--champagne); box-shadow: 0 0 5px rgba(226, 194, 117, 0.3); }
-        
         button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; font-size: 1rem; }
         button:hover { opacity: 0.9; transform: translateY(-1px); }
-        button:disabled { background: #999; cursor: not-allowed; opacity: 0.7; }
-
         .section-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: var(--matte-gold); display: flex; align-items: center; }
         .section-title::before { content: ""; width: 4px; height: 18px; background: var(--champagne); margin-right: 8px; border-radius: 2px; }
     </style>
@@ -43,7 +34,7 @@
     <div class="card dashboard">
         <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #555; padding-bottom: 10px; margin-bottom: 15px;">
             <span style="color: var(--champagne); font-weight: bold; letter-spacing: 1px;">最新資產概況</span>
-            <span id="lastUpdateDate" style="font-size: 0.8rem; color: #AAA;">資料讀取中...</span>
+            <span id="lastUpdateDate" style="font-size: 0.8rem; color: #AAA;">最後同步: --</span>
         </div>
         <div class="grid">
             <div><label class="dash-label">帳戶存款</label><div id="dispDeposit" class="val">$0</div></div>
@@ -58,7 +49,7 @@
     </div>
 
     <div class="card">
-        <div class="section-title">帳戶紀錄</div>
+        <div class="section-title">帳戶存入紀錄</div>
         <div class="grid">
             <div class="form-group"><label>日期</label><input type="date" id="accDate"></div>
             <div class="form-group"><label>存入金額</label><input type="number" id="accAmount" placeholder="輸入金額"></div>
@@ -68,24 +59,24 @@
     </div>
 
     <div class="card">
-        <div class="section-title">股票交易</div>
+        <div class="section-title">股票交易登記</div>
         <div class="grid">
             <div class="form-group"><label>交易日期</label><input type="date" id="tradeDate"></div>
             <div class="form-group"><label>交易類型</label>
                 <select id="tradeType">
-                    <option value="進">進貨 (買入)</option>
-                    <option value="出">出倉 (賣出)</option>
+                    <option value="進">買進 (0.1425%)</option>
+                    <option value="出">賣出 (0.4425%)</option>
                 </select>
             </div>
-            <div class="form-group"><label>股票代碼</label><input type="text" id="tradeCode" placeholder="例如：2330"></div>
+            <div class="form-group"><label>股票代碼</label><input type="text" id="tradeCode" placeholder="2330"></div>
             <div class="form-group">
                 <label>股票名稱</label>
-                <input type="text" id="tradeName" list="stockOptions" placeholder="搜尋或新增...">
+                <input type="text" id="tradeName" list="stockOptions">
                 <datalist id="stockOptions"></datalist>
             </div>
-            <div class="form-group"><label>成交數量 (股)</label><input type="number" id="tradeQty"></div>
+            <div class="form-group"><label>成交數量</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>成交單價</label><input type="number" id="tradePrice"></div>
-            <div class="form-group full-width"><label>手續費/稅費</label><input type="number" id="tradeFee" value="0"></div>
+            <div class="form-group full-width"><label>預估費用</label><input type="number" id="tradeFee" readonly style="background:#f0f0f0;"></div>
         </div>
         <button id="btnTrade" onclick="submitTrade()">儲存交易明細</button>
     </div>
@@ -96,7 +87,6 @@
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec'; 
     
     let localProductList = [];
-    let isSubmitting = false;
 
     window.onload = function() {
         const today = new Date().toISOString().split('T')[0];
@@ -106,28 +96,23 @@
         fetchLastProfit();
     };
 
-    // 1. 抓取最新一筆盈餘分析資料
     function fetchLastProfit() {
         fetch(GAS_URL + "?action=getLastProfit").then(res => res.json()).then(data => {
             if (!data.date) return;
             document.getElementById('lastUpdateDate').innerText = '最後同步: ' + data.date;
-            document.getElementById('dispDeposit').innerText = '$' + Number(data.deposit || 0).toLocaleString();
-            document.getElementById('dispMarket').innerText = '$' + Number(data.marketValue || 0).toLocaleString();
-            document.getElementById('dispTotal').innerText = '$' + Number(data.totalAssets || 0).toLocaleString();
-            document.getElementById('dispCost').innerText = '$' + Number(data.cost || 0).toLocaleString();
-            
-            const profit = Number(data.profit || 0);
+            document.getElementById('dispDeposit').innerText = '$' + Number(data.deposit).toLocaleString();
+            document.getElementById('dispMarket').innerText = '$' + Number(data.marketValue).toLocaleString();
+            document.getElementById('dispTotal').innerText = '$' + Number(data.totalAssets).toLocaleString();
+            document.getElementById('dispCost').innerText = '$' + Number(data.cost).toLocaleString();
+            const profit = Number(data.profit);
             document.getElementById('dispProfit').innerText = '$' + profit.toLocaleString();
-            document.getElementById('dispROI').innerText = data.roi || "0.00%";
-            
-            // 損益顏色：正數金色，負數紅色
+            document.getElementById('dispROI').innerText = data.roi;
             const color = profit >= 0 ? '#E2C275' : '#FF6B6B';
             document.getElementById('dispProfit').style.color = color;
             document.getElementById('dispROI').style.color = color;
-        }).catch(err => console.error("抓取資產概況失敗:", err));
+        });
     }
 
-    // 2. 抓取商品清單 (代碼與名稱連動用)
     function fetchProductList() {
         fetch(GAS_URL + "?action=getProductList").then(res => res.json()).then(data => {
             localProductList = data;
@@ -139,105 +124,60 @@
                 option.label = item.code;
                 datalist.appendChild(option);
             });
-        }).catch(err => console.error("抓取商品清單失敗:", err));
+        });
     }
 
-    // 【雙向連動邏輯】
+    // 自動聯動代碼與名稱
     document.getElementById('tradeCode').addEventListener('input', function() {
-        const val = this.value.trim();
-        const found = localProductList.find(i => i.code === val);
+        const found = localProductList.find(i => i.code === this.value.trim());
         if (found) document.getElementById('tradeName').value = found.name;
     });
 
-    document.getElementById('tradeName').addEventListener('input', function() {
-        const val = this.value.trim();
-        const found = localProductList.find(i => i.name === val);
-        if (found) document.getElementById('tradeCode').value = found.code;
-    });
+    // 自動計算手續費
+    function calculatePreview() {
+        const qty = Number(document.getElementById('tradeQty').value);
+        const price = Number(document.getElementById('tradePrice').value);
+        const type = document.getElementById('tradeType').value;
+        if (qty && price) {
+            const amount = qty * price;
+            let fee = (type === "進") ? Math.max(20, Math.floor(amount * 0.001425)) : Math.max(20, Math.floor(amount * 0.004425));
+            document.getElementById('tradeFee').value = fee;
+        }
+    }
+    document.getElementById('tradeQty').addEventListener('input', calculatePreview);
+    document.getElementById('tradePrice').addEventListener('input', calculatePreview);
+    document.getElementById('tradeType').addEventListener('change', calculatePreview);
 
-    // 3. 提交存入紀錄
     function submitAccount() {
-        const amount = document.getElementById('accAmount').value;
-        if (!amount) return alert('請輸入存入金額');
-        
         sendToGas({
             action: "addAccountLog",
-            data: {
-                date: document.getElementById('accDate').value,
-                amount: amount,
-                note: document.getElementById('accNote').value
-            }
+            data: { date: document.getElementById('accDate').value, amount: document.getElementById('accAmount').value, note: document.getElementById('accNote').value }
         }, 'btnAccount');
     }
 
-    // 4. 提交交易明細
     function submitTrade() {
-        const code = document.getElementById('tradeCode').value.trim();
-        const name = document.getElementById('tradeName').value.trim();
-        const qty = Number(document.getElementById('tradeQty').value);
-        const price = Number(document.getElementById('tradePrice').value);
-        const fee = Number(document.getElementById('tradeFee').value);
-        const type = document.getElementById('tradeType').value;
-
-        if (!code || !name || !qty || !price) return alert('請填寫完整交易資訊');
-
         sendToGas({
             action: "addTransaction",
             data: {
                 date: document.getElementById('tradeDate').value,
-                type: type,
-                code: code,
-                name: name,
-                qty: qty,
-                price: price,
-                fee: fee,
-                total: (type === "進") ? (qty * price) + fee : (qty * price) - fee
+                type: document.getElementById('tradeType').value,
+                code: document.getElementById('tradeCode').value,
+                name: document.getElementById('tradeName').value,
+                qty: document.getElementById('tradeQty').value,
+                price: document.getElementById('tradePrice').value
             }
         }, 'btnTrade');
     }
 
-    // 通用傳送函式
     function sendToGas(payload, btnId) {
-        if (isSubmitting) return;
-        isSubmitting = true;
         const btn = document.getElementById(btnId);
-        const originalText = btn.innerText;
-        btn.innerText = '處理中，請稍候...';
+        btn.innerText = '處理中...';
         btn.disabled = true;
-
-        fetch(GAS_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify(payload)
-        })
+        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) })
         .then(() => {
-            alert('送出成功！資料已同步至試算表。');
-            resetForm(payload.action);
-            fetchLastProfit(); // 立即更新儀表板數字
-            fetchProductList(); // 立即重新抓取清單 (確保新商品自動新增後能連動)
-        })
-        .catch(err => alert('連線失敗：' + err))
-        .finally(() => {
-            isSubmitting = false;
-            btn.innerText = originalText;
-            btn.disabled = false;
+            alert('送出成功！');
+            location.reload();
         });
-    }
-
-    function resetForm(action) {
-        const today = new Date().toISOString().split('T')[0];
-        if (action === "addAccountLog") {
-            document.getElementById('accAmount').value = '';
-            document.getElementById('accNote').value = '';
-            document.getElementById('accDate').value = today;
-        } else {
-            document.getElementById('tradeCode').value = '';
-            document.getElementById('tradeName').value = '';
-            document.getElementById('tradeQty').value = '';
-            document.getElementById('tradePrice').value = '';
-            document.getElementById('tradeFee').value = '0';
-            document.getElementById('tradeDate').value = today;
-        }
     }
 </script>
 </body>
