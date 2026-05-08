@@ -73,164 +73,66 @@
 <script>
     // 【重要】請在此處替換您的 Google Apps Script 部署網址
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec';
-    let localProductList = [];
+ // 全域變數儲存清單資料
+let localProductList = [];
 
-    // 初始化：設定日期為今天，並抓取現有商品清單
-    window.onload = function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('accDate').value = today;
-        document.getElementById('tradeDate').value = today;
-        fetchProductList();
-    };
-// 讓名稱也能反向帶入代碼 (選配)
-    function autoMatchCode(name) {
-        const found = localProductList.find(i => i.name === name);
-        if (found) {
-            document.getElementById('tradeCode').value = found.code;
-        }
-    }
-    // 從 GAS 抓取最新的代碼與名稱清單
-    function fetchProductList() {
-        fetch(GAS_URL + "?action=getProductList")
-        .then(res => res.json())
-        .then(data => {
-            localProductList = data;
-            const datalist = document.getElementById('stockOptions');
-            datalist.innerHTML = ""; // 清空舊選項
-            data.forEach(item => {
-                let option = document.createElement('option');
-                option.value = item.name;
-                option.label = item.code;
-                datalist.appendChild(option);
-            });
-        })
-        .catch(err => console.error("抓取清單失敗:", err));
-    }
+// 1. 頁面加載完成後的初始化
+window.onload = function() {
+    // 立即設定預設日期
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('accDate').value = today;
+    document.getElementById('tradeDate').value = today;
 
-    // 監聽代碼輸入：若代碼已存在，自動帶入名稱
-    document.getElementById('tradeCode').addEventListener('input', function() {
-        const code = this.value.trim();
-        const found = localProductList.find(i => i.code.toString() === code);
-        if (found) {
-            document.getElementById('tradeName').value = found.name;
-        }
-    });
+    // 抓取後台資料以供模糊搜尋
+    fetchProductList();
+};
 
-    // 提交帳戶存入
-    function submitAccount() {
-        const payload = {
-            action: "addAccountLog",
-            data: {
-                date: document.getElementById('accDate').value,
-                amount: Number(document.getElementById('accAmount').value),
-                note: document.getElementById('accNote').value
-            }
-        };
-        sendToGas(payload);
-    }
-
-    // 提交交易明細
-    function submitTrade() {
-        const qty = Number(document.getElementById('tradeQty').value);
-        const price = Number(document.getElementById('tradePrice').value);
-        const fee = Number(document.getElementById('tradeFee').value);
-        const type = document.getElementById('tradeType').value;
-
-        // 精準計算總額，防止字串串接
-        let total = (type === "進") ? (qty * price) + fee : (qty * price) - fee;
-
-        const payload = {
-            action: "addTransaction",
-            data: {
-                date: document.getElementById('tradeDate').value,
-                type: type,
-                code: document.getElementById('tradeCode').value,
-                name: document.getElementById('tradeName').value,
-                qty: qty,
-                price: price,
-                fee: fee,
-                total: total
-            }
-        };
-        sendToGas(payload);
-    }
-
-    // 發送資料至 GAS
-  let isSubmitting = false;
-
-  function sendToGas(payload) {
-    // 如果正在送出中，直接攔截
-    if (isSubmitting) {
-        alert('資料更新中，請勿重複寫入');
-        return;
-    }
-
-    // 開始送出，鎖定狀態並改變按鈕樣式
-    isSubmitting = true;
-    const submitBtn = document.querySelector('button'); // 建議給按鈕一個 ID 會更精確
-    const originalText = submitBtn.innerText;
-    submitBtn.innerText = '處理中...';
-    submitBtn.style.opacity = '0.5';
-    submitBtn.disabled = true;
-    
-        fetch(GAS_URL, {
-            method: 'POST',
-            mode: 'no-cors', // 配合 GAS 的跨網域規範
-            body: JSON.stringify(payload)
-        })
-        .then(() => {
-            alert('資料已成功送出！');
-            resetForm(payload.action);
-            fetchProductList(); // 重新抓取清單，確保新加入的股票出現在下拉選單
-        })
-        .catch(err => alert('發生錯誤：' + err));
-    })
-    .finally(() => {
-        // 無論成功或失敗，都解除鎖定
-        isSubmitting = false;
-        submitBtn.innerText = originalText;
-        submitBtn.style.opacity = '1';
-        submitBtn.disabled = false;
+// 2. 從 GAS 抓取清單並建立模糊選單
+function fetchProductList() {
+    fetch(GAS_URL + "?action=getProductList")
+    .then(res => res.json())
+    .then(data => {
+        localProductList = data;
+        const datalist = document.getElementById('stockOptions');
+        datalist.innerHTML = ""; // 清空舊選項
+        
+        data.forEach(item => {
+            let option = document.createElement('option');
+            // 選單顯示名稱，後方註記代碼方便識別
+            option.value = item.name; 
+            option.label = item.code; 
+            datalist.appendChild(option);
+        });
     });
 }
 
-    // 自動回到原設定 (重置表單)
-    function resetForm(action) {
-        const today = new Date().toISOString().split('T')[0];
-        if (action === "addAccountLog") {
-            document.getElementById('accAmount').value = '';
-            document.getElementById('accNote').value = '';
-            document.getElementById('accDate').value = today;
-        } else {
-            document.getElementById('tradeCode').value = '';
-            document.getElementById('tradeName').value = '';
-            document.getElementById('tradeQty').value = '';
-            document.getElementById('tradePrice').value = '';
-            document.getElementById('tradeFee').value = '0';
-            document.getElementById('tradeType').value = '進';
-            document.getElementById('tradeDate').value = today;
-        }
+// 3. 監聽代碼輸入：自動帶出名稱
+document.getElementById('tradeCode').addEventListener('input', function() {
+    const code = this.value.trim();
+    // 在抓到的清單中比對代碼
+    const found = localProductList.find(i => i.code.toString() === code);
+    if (found) {
+        document.getElementById('tradeName').value = found.name;
     }
+});
 
-    // 核心修改：重置表單時保留當天日期
-    function resetForm(action) {
-        // 取得當前時區的 yyyy-mm-dd
-        const now = new Date();
-        const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+// 4. 修正後的重置函式
+function resetForm(action) {
+    const today = new Date().toISOString().split('T')[0];
 
-        if (action === "addAccountLog") {
-            document.getElementById('accAmount').value = '';
-            document.getElementById('accNote').value = '';
-            document.getElementById('accDate').value = today; // 保留當日
-        } else {
-            document.getElementById('tradeCode').value = '';
-            document.getElementById('tradeName').value = '';
-            document.getElementById('tradeQty').value = '';
-            document.getElementById('tradePrice').value = '';
-            document.getElementById('tradeFee').value = '0';
-            document.getElementById('tradeDate').value = today; // 保留當日
-        }
+    if (action === "addAccountLog") {
+        document.getElementById('accAmount').value = '';
+        document.getElementById('accNote').value = '';
+        document.getElementById('accDate').value = today; 
+    } else {
+        document.getElementById('tradeCode').value = '';
+        document.getElementById('tradeName').value = '';
+        document.getElementById('tradeQty').value = '';
+        document.getElementById('tradePrice').value = '';
+        document.getElementById('tradeFee').value = '0';
+        document.getElementById('tradeDate').value = today; // 提交後保留今日日期
     }
+}
 </script>
 </body>
 </html>
