@@ -25,6 +25,7 @@
         input, select { padding: 10px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
         button { background: linear-gradient(135deg, var(--champagne), var(--matte-gold)); color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; margin-top: 15px; width: 100%; }
         button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(197, 160, 89, 0.4); }
+        datalist { display: none; }
     </style>
 </head>
 <body>
@@ -39,8 +40,8 @@
         <h2>帳戶存入 (Deposit)</h2>
         <div class="grid">
             <div class="form-group"><label>日期</label><input type="date" id="accDate"></div>
-            <div class="form-group"><label>金額</label><input type="number" id="accAmount"></div>
-            <div class="form-group"><label>備註</label><input type="text" id="accNote"></div>
+            <div class="form-group"><label>金額</label><input type="number" id="accAmount" placeholder="輸入存入金額"></div>
+            <div class="form-group"><label>備註</label><input type="text" id="accNote" placeholder="例如：5月薪資存入"></div>
         </div>
         <button onclick="submitAccount()">提交存入紀錄</button>
     </div>
@@ -56,8 +57,12 @@
                     <option value="出">出倉 (Sell)</option>
                 </select>
             </div>
-            <div class="form-group"><label>代碼</label><input type="text" id="tradeCode"></div>
-            <div class="form-group"><label>名稱 (選填)</label><input type="text" id="tradeName" placeholder="新股票請填中文名"></div>
+            <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="例如：2330"></div>
+            <div class="form-group">
+                <label>名稱</label>
+                <input type="text" id="tradeName" list="stockOptions" placeholder="手寫或選擇名稱">
+                <datalist id="stockOptions"></datalist>
+            </div>
             <div class="form-group"><label>數量 (股)</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價 (每股)</label><input type="number" id="tradePrice"></div>
             <div class="form-group"><label>手續費</label><input type="number" id="tradeFee" value="0"></div>
@@ -67,11 +72,46 @@
 </div>
 
 <script>
+    // 【重要】請在此處替換您的 Google Apps Script 部署網址
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq6jzwqTOyAPK4LVaHNj3Wrad_03tKgZWDI01NP8G8pLiXD4hNbeEG7BnTzp2ykNfag/exec';
+    let localProductList = [];
 
-    // 設定預設日期為今天
-    document.querySelectorAll('input[type="date"]').forEach(el => el.value = new Date().toISOString().split('T')[0]);
+    // 初始化：設定日期為今天，並抓取現有商品清單
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('accDate').value = today;
+        document.getElementById('tradeDate').value = today;
+        fetchProductList();
+    };
 
+    // 從 GAS 抓取最新的代碼與名稱清單
+    function fetchProductList() {
+        fetch(GAS_URL + "?action=getProductList")
+        .then(res => res.json())
+        .then(data => {
+            localProductList = data;
+            const datalist = document.getElementById('stockOptions');
+            datalist.innerHTML = ""; // 清空舊選項
+            data.forEach(item => {
+                let option = document.createElement('option');
+                option.value = item.name;
+                option.label = item.code;
+                datalist.appendChild(option);
+            });
+        })
+        .catch(err => console.error("抓取清單失敗:", err));
+    }
+
+    // 監聽代碼輸入：若代碼已存在，自動帶入名稱
+    document.getElementById('tradeCode').addEventListener('input', function() {
+        const code = this.value.trim();
+        const found = localProductList.find(i => i.code.toString() === code);
+        if (found) {
+            document.getElementById('tradeName').value = found.name;
+        }
+    });
+
+    // 提交帳戶存入
     function submitAccount() {
         const payload = {
             action: "addAccountLog",
@@ -84,13 +124,14 @@
         sendToGas(payload);
     }
 
+    // 提交交易明細
     function submitTrade() {
         const qty = Number(document.getElementById('tradeQty').value);
         const price = Number(document.getElementById('tradePrice').value);
         const fee = Number(document.getElementById('tradeFee').value);
         const type = document.getElementById('tradeType').value;
 
-        // 計算總額，防止字串串接
+        // 精準計算總額，防止字串串接
         let total = (type === "進") ? (qty * price) + fee : (qty * price) - fee;
 
         const payload = {
@@ -109,23 +150,37 @@
         sendToGas(payload);
     }
 
+    // 發送資料至 GAS
     function sendToGas(payload) {
         fetch(GAS_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'no-cors', // 配合 GAS 的跨網域規範
             body: JSON.stringify(payload)
         })
         .then(() => {
             alert('資料已成功送出！');
-            // 成功後清空部分輸入框
-            if(payload.action === "addTransaction") {
-                document.getElementById('tradeCode').value = '';
-                document.getElementById('tradeName').value = '';
-                document.getElementById('tradeQty').value = '';
-                document.getElementById('tradePrice').value = '';
-            }
+            resetForm(payload.action);
+            fetchProductList(); // 重新抓取清單，確保新加入的股票出現在下拉選單
         })
         .catch(err => alert('發生錯誤：' + err));
+    }
+
+    // 自動回到原設定 (重置表單)
+    function resetForm(action) {
+        const today = new Date().toISOString().split('T')[0];
+        if (action === "addAccountLog") {
+            document.getElementById('accAmount').value = '';
+            document.getElementById('accNote').value = '';
+            document.getElementById('accDate').value = today;
+        } else {
+            document.getElementById('tradeCode').value = '';
+            document.getElementById('tradeName').value = '';
+            document.getElementById('tradeQty').value = '';
+            document.getElementById('tradePrice').value = '';
+            document.getElementById('tradeFee').value = '0';
+            document.getElementById('tradeType').value = '進';
+            document.getElementById('tradeDate').value = today;
+        }
     }
 </script>
 </body>
