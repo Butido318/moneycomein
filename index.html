@@ -193,20 +193,58 @@
     }
     ['tradeQty', 'tradePrice', 'tradeType'].forEach(id => document.getElementById(id).addEventListener('input', calculatePreview));
 
+        // --- 帳戶存入驗證邏輯 ---
     function submitAccount() {
-        sendToGas({ action: "addAccountLog", data: { date: document.getElementById('accDate').value, amount: document.getElementById('accAmount').value, note: document.getElementById('accNote').value } }, 'btnAccount');
+        const amt = document.getElementById('accAmount').value;
+        if (amt === "" || Number(amt) <= 0) {
+            const confirmAction = confirm("目前存入金額小於或等於 0，確定要送出嗎？");
+            if (!confirmAction) return; // 使用者選取消則中斷
+        }
+        sendToGas({ 
+            action: "addAccountLog", data: { date: document.getElementById('accDate').value, amount: amt, note: document.getElementById('accNote').value 
+            } 
+        }, 'btnAccount');
     }
-
+    // --- 交易登記驗證邏輯 ---
     function submitTrade() {
-        sendToGas({ action: "addTransaction", data: { date: document.getElementById('tradeDate').value, type: document.getElementById('tradeType').value, code: document.getElementById('tradeCode').value, name: document.getElementById('tradeName').value, qty: document.getElementById('tradeQty').value, price: document.getElementById('tradePrice').value } }, 'btnTrade');
+        const qty = document.getElementById('tradeQty').value;
+        const price = document.getElementById('tradePrice').value;
+        const code = document.getElementById('tradeCode').value;
+
+        if (qty === "" || Number(qty) <= 0 || price === "" || Number(price) <= 0 || code === "") {
+            alert("資料不完整！請確認股票代碼、股數與單價皆已填寫且大於 0。");
+            return; // 直接中斷不送出
+        }
+
+        sendToGas({ 
+            action: "addTransaction", 
+            data: { 
+                date: document.getElementById('tradeDate').value, 
+                type: document.getElementById('tradeType').value, 
+                code: code, 
+                name: document.getElementById('tradeName').value, 
+                qty: qty, 
+                price: price 
+            } 
+        }, 'btnTrade');
     }
 
     function sendToGas(payload, btnId) {
         const btn = document.getElementById(btnId);
         btn.innerText = '處理中...';
         btn.disabled = true;
-        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }).then(() => { alert('送出成功！'); location.reload(); });
+        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) })
+        .then(() => { 
+            alert('送出成功！'); 
+            location.reload(); 
+        })
+        .catch(err => {
+            alert('發生錯誤：' + err);
+            btn.innerText = '重新送出';
+            btn.disabled = false;
+        });
     }
+    
 </script>
 </body>
 </html>
