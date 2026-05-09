@@ -150,13 +150,16 @@
         fetch(GAS_URL + "?action=getLastProfit").then(res => res.json()).then(data => {
             if (!data.date) return;
             document.getElementById('lastUpdateDate').innerText = '最後同步: ' + data.date;
-            document.getElementById('dispDeposit').innerText = '$' + Number(data.deposit).toLocaleString();
-            document.getElementById('dispMarket').innerText = '$' + Number(data.marketValue).toLocaleString();
-            document.getElementById('dispTotal').innerText = '$' + Number(data.totalAssets).toLocaleString();
-            document.getElementById('dispCost').innerText = '$' + Number(data.cost).toLocaleString();
-            const profit = Number(data.profit);
+            // 使用 Math.round 確保顯示為整數
+            document.getElementById('dispDeposit').innerText = '$' + Math.round(data.deposit).toLocaleString();
+            document.getElementById('dispMarket').innerText = '$' + Math.round(data.marketValue).toLocaleString();
+            document.getElementById('dispTotal').innerText = '$' + Math.round(data.totalAssets).toLocaleString();
+            document.getElementById('dispCost').innerText = '$' + Math.round(data.cost).toLocaleString();
+            
+            const profit = Math.round(data.profit);
             document.getElementById('dispProfit').innerText = '$' + profit.toLocaleString();
             document.getElementById('dispROI').innerText = data.roi;
+            
             const color = profit >= 0 ? '#E2C275' : '#FF6B6B';
             document.getElementById('dispProfit').style.color = color;
             document.getElementById('dispROI').style.color = color;
