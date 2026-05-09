@@ -197,7 +197,7 @@
     function submitAccount() {
         const amt = document.getElementById('accAmount').value;
         if (amt === "" || Number(amt) <= 0) {
-            const confirmAction = confirm("目前存入金額小於或等於 0，確定要送出嗎？");
+            const confirmAction = confirm("金額小於或等於 0，確定要送出嗎？");
             if (!confirmAction) return; // 使用者選取消則中斷
         }
         sendToGas({ 
@@ -212,7 +212,7 @@
         const code = document.getElementById('tradeCode').value;
 
         if (qty === "" || Number(qty) <= 0 || price === "" || Number(price) <= 0 || code === "") {
-            alert("資料不完整！請確認股票代碼、股數與單價皆已填寫且大於 0。");
+            alert("請確認股票代碼、股數與單價皆已填寫!");
             return; // 直接中斷不送出
         }
 
