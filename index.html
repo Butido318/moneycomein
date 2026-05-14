@@ -193,15 +193,52 @@
         fetchLastProfit();
         fetchInventory();
     };
+    
+// 宣告全域變數
+let localProductList = []; 
 
-     function fetchInventory() {
-        fetch(GAS_URL + "?action=getInventory").then(res => res.json()).then(data => {
-            const tbody = document.getElementById('inventoryBody');
-            tbody.innerHTML = data.length ? "" : '<tr><td colspan="4" style="text-align:center;">無持有股票</td></tr>';
-            
-            data.forEach(item => {
-                const curPrice = Number(item.price);
-                const avgCost = Number(item.avgCost);
+// 步驟 A：初始化抓取資料
+function fetchProductList() {
+    fetch(GAS_URL + "?action=getProductList")
+    .then(res => res.json())
+    .then(data => {
+        localProductList = data; // 確保這裡存入的是 localProductList
+        const datalist = document.getElementById('stockOptions');
+        datalist.innerHTML = ''; 
+        data.forEach(item => {
+            let option = document.createElement('option');
+            option.value = item.name; 
+            datalist.appendChild(option);
+        });
+        console.log("清單載入成功", localProductList);
+    });
+}
+
+// 步驟 B：代碼連動名稱
+function handleCodeInput() {
+    const inputCode = document.getElementById('tradeCode').value.trim();
+    const nameInput = document.getElementById('tradeName');
+    
+    // 關鍵：這裡必須使用與上面相同的 localProductList
+    const match = localProductList.find(item => item.code === inputCode);
+    
+    if (match) {
+        nameInput.value = match.name;
+    }
+}
+
+// 步驟 C：名稱連動代碼
+function handleNameInput() {
+    const inputName = document.getElementById('tradeName').value;
+    const codeInput = document.getElementById('tradeCode');
+    
+    // 關鍵：這裡必須使用與上面相同的 localProductList
+    const match = localProductList.find(item => item.name === inputName);
+    
+    if (match) {
+        codeInput.value = match.code;
+        }
+}
                 
                 // 顏色判斷邏輯
                 let colorClass = "neutral-gray";
