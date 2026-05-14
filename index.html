@@ -161,10 +161,18 @@
                     <option value="出">賣出 (0.4425%)</option>
                 </select>
             </div>
-            <div class="form-group"><label>代碼</label><input type="text" id="tradeCode" placeholder="2330"></div>
-            <div class="form-group"><label>名稱</label><input type="text" id="tradeName" list="stockOptions">
-                <datalist id="stockOptions"></datalist>
-            </div>
+<!-- 股票名稱輸入框 -->
+<div class="form-group">
+    <label>股票名稱</label>
+    <input type="text" id="tradeName" list="stockOptions" placeholder="輸入名稱..." oninput="handleNameInput()">
+    <datalist id="stockOptions"></datalist>
+</div>
+
+<!-- 股票代碼輸入框 -->
+<div class="form-group">
+    <label>股票代碼</label>
+    <input type="text" id="tradeCode" placeholder="或輸入代碼..." oninput="handleCodeInput()">
+</div>
             <div class="form-group"><label>股數</label><input type="number" id="tradeQty"></div>
             <div class="form-group"><label>單價</label><input type="number" id="tradePrice"></div>
             <div class="form-group full-width"><label>預估費用 (手續費/稅)</label><input type="number" id="tradeFee" readonly style="background:#F0F0F0;"></div>
@@ -235,23 +243,7 @@
         });
     }
 
-    function fetchProductList() {
-        fetch(GAS_URL + "?action=getProductList").then(res => res.json()).then(data => {
-            localProductList = data;
-            const datalist = document.getElementById('stockOptions');
-            data.forEach(item => {
-                let option = document.createElement('option');
-                option.value = item.name;
-                option.label = item.code;
-                datalist.appendChild(option);
-            });
-        });
-    }
-
-    document.getElementById('tradeCode').addEventListener('input', function() {
-        const found = localProductList.find(i => i.code === this.value.trim());
-        if (found) document.getElementById('tradeName').value = found.name;
-    });
+        fun
 
     function calculatePreview() {
         const qty = Number(document.getElementById('tradeQty').value);
