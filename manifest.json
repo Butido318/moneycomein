@@ -1,6 +1,6 @@
 {
-  "name": "我的網頁名稱",
-  "short_name": "網頁名稱",
+  "name": "Do財務報表",
+  "short_name": "Do要發啦",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
